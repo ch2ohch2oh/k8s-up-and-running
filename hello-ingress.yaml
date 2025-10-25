@@ -1,0 +1,89 @@
+# This file defines a Deployment, a Service, and an Ingress resource for a simple "hello" application.
+#
+# Prerequisites:
+# This configuration uses an Ingress resource, which requires an Ingress controller.
+# Project Contour is used here, and it must be installed in your cluster.
+#
+# Installation:
+# To install Project Contour, run the following command once per cluster:
+#   kubectl apply -f https://projectcontour.io/quickstart/contour.yaml
+#
+# How it works:
+# - Ingress: A Kubernetes resource that defines rules for routing external HTTP/S traffic to services.
+# - Contour: An Ingress controller that configures the data plane (Envoy) based on Ingress resources.
+# - Envoy: A high-performance proxy that routes the actual traffic as directed by Contour.
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-deployment
+  labels:
+    app: hello
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hello
+  template:
+    metadata:
+      labels:
+        app: hello
+    spec:
+      containers:
+        - image: us-docker.pkg.dev/google-samples/containers/gke/hello-app:1.0
+          name: hello
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "128Mi"
+            # limits:
+            #   cpu: "1000m"
+            #   memory: "256Mi"
+          ports:
+          - containerPort: 8080
+            name: http
+            protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-service
+spec:
+  type: ClusterIP
+  selector:
+    app: hello
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello-ingress
+spec:
+  ingressClassName: contour
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-service
+            port:
+              number: 80
