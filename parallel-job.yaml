@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: parallel-job
+spec:
+  completions: 5  # Total number of successful pods to complete the job
+  parallelism: 2  # Number of pods to run in parallel
+  template:
+    spec:
+      containers:
+      - name: hello
+        image: busybox
+        command: ["/bin/sh", "-c", "echo 'Hello from the parallel Kubernetes Job!' && sleep 10"]
+      restartPolicy: OnFailure
